@@ -6,17 +6,43 @@ import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { Video, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertRoomSchema } from "@shared/schema";
+import { z } from "zod";
+
+const joinRoomSchema = z.object({
+  roomId: z.string().length(6).regex(/^\d+$/, "Room ID must be 6 digits"),
+  username: z.string().min(1, "Username is required")
+});
 
 export default function Home() {
-  const [roomId, setRoomId] = useState("");
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const form = useForm({
+    resolver: zodResolver(joinRoomSchema),
+    defaultValues: {
+      roomId: "",
+      username: ""
+    }
+  });
 
-  const createRoom = async () => {
+  const createRoom = async (username: string) => {
+    if (!username) {
+      toast({
+        title: "Username required",
+        description: "Please enter a username",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const res = await apiRequest("POST", "/api/rooms");
+      const res = await apiRequest("POST", "/api/rooms", { username });
       const { roomId } = await res.json();
-      navigate(`/room/${roomId}`);
+      navigate(`/room/${roomId}?username=${encodeURIComponent(username)}`);
     } catch (err) {
       toast({
         title: "Error creating room",
@@ -26,16 +52,8 @@ export default function Home() {
     }
   };
 
-  const joinRoom = () => {
-    if (!roomId.trim()) {
-      toast({
-        title: "Invalid room ID",
-        description: "Please enter a valid room ID",
-        variant: "destructive"
-      });
-      return;
-    }
-    navigate(`/room/${roomId}`);
+  const onSubmit = (data: z.infer<typeof joinRoomSchema>) => {
+    navigate(`/room/${data.roomId}?username=${encodeURIComponent(data.username)}`);
   };
 
   return (
@@ -47,14 +65,26 @@ export default function Home() {
             Video Chat
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              placeholder="Enter your name"
+              value={form.watch("username")}
+              onChange={(e) => form.setValue("username", e.target.value)}
+            />
+          </div>
+
           <Button
-            onClick={createRoom}
+            onClick={() => createRoom(form.watch("username"))}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={!form.watch("username")}
           >
             <Users className="mr-2 h-4 w-4" />
             Create Room
           </Button>
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
@@ -65,14 +95,38 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter Room ID"
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-            />
-            <Button onClick={joinRoom}>Join</Button>
-          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="roomId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Room ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter 6-digit Room ID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your username" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full">Join Room</Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>

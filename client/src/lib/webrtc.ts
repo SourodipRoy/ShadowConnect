@@ -1,31 +1,33 @@
-import type { SignalMessage } from "@shared/schema";
+import type { SignalMessage, UserStatus } from "@shared/schema";
 
 export async function setupPeerConnection(
   roomId: string,
   localStream: MediaStream,
-  onRemoteStream: (stream: MediaStream) => void
+  username: string,
+  onRemoteStream: (stream: MediaStream, userStatus: UserStatus) => void
 ) {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
 
-  // Add local tracks to the connection
   localStream.getTracks().forEach((track) => {
     pc.addTrack(track, localStream);
   });
 
-  // Handle remote tracks
   pc.ontrack = (event) => {
-    onRemoteStream(event.streams[0]);
+    onRemoteStream(event.streams[0], {
+      username: "Remote",
+      isMuted: false,
+      isVideoOff: false
+    });
   };
 
-  // Setup WebSocket connection
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl = `${protocol}//${window.location.host}/ws`;
   const ws = new WebSocket(wsUrl);
 
   ws.onmessage = async (event) => {
-    const { type, data } = JSON.parse(event.data);
+    const { type, data, username: remoteUsername, status } = JSON.parse(event.data);
 
     try {
       if (type === "offer") {
@@ -36,6 +38,7 @@ export async function setupPeerConnection(
           JSON.stringify({
             type: "answer",
             roomId,
+            username,
             data: answer
           })
         );
@@ -43,25 +46,29 @@ export async function setupPeerConnection(
         await pc.setRemoteDescription(new RTCSessionDescription(data));
       } else if (type === "ice-candidate") {
         await pc.addIceCandidate(new RTCIceCandidate(data));
+      } else if (type === "status-update" && status) {
+        onRemoteStream(
+          pc.getRemoteStreams()[0],
+          status as UserStatus
+        );
       }
     } catch (err) {
       console.error("WebRTC Error:", err);
     }
   };
 
-  // Send ICE candidates to peer
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       const message: SignalMessage = {
         type: "ice-candidate",
         roomId,
+        username,
         data: event.candidate
       };
       ws.send(JSON.stringify(message));
     }
   };
 
-  // Create and send offer when connected
   ws.onopen = async () => {
     try {
       const offer = await pc.createOffer();
@@ -69,6 +76,7 @@ export async function setupPeerConnection(
       const message: SignalMessage = {
         type: "offer",
         roomId,
+        username,
         data: offer
       };
       ws.send(JSON.stringify(message));
@@ -80,24 +88,20 @@ export async function setupPeerConnection(
   return { pc, ws };
 }
 
-// Helper function to start screen sharing
 export async function startScreenShare(): Promise<MediaStream> {
   return await navigator.mediaDevices.getDisplayMedia({
     video: {
-      displaySurface: "monitor", // Prefer full screen
-      logicalSurface: true,
+      displaySurface: "monitor",
       cursor: "always"
     },
     audio: true
   });
 }
 
-// Helper function to switch cameras
 export async function switchCamera(currentStream: MediaStream): Promise<MediaStream> {
   const currentVideoTrack = currentStream.getVideoTracks()[0];
   const currentFacingMode = currentVideoTrack.getSettings().facingMode;
 
-  // Toggle between front and back cameras
   const newFacingMode = currentFacingMode === "user" ? "environment" : "user";
 
   const newStream = await navigator.mediaDevices.getUserMedia({

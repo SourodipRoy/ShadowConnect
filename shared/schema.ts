@@ -11,6 +11,9 @@ export const rooms = pgTable("rooms", {
 export const insertRoomSchema = createInsertSchema(rooms).omit({
   id: true,
   createdAt: true
+}).extend({
+  roomId: z.string().length(6).regex(/^\d+$/, "Room ID must be 6 digits"),
+  username: z.string().min(1, "Username is required")
 });
 
 export type InsertRoom = z.infer<typeof insertRoomSchema>;
@@ -20,5 +23,13 @@ export type Room = typeof rooms.$inferSelect;
 export type SignalMessage = {
   type: 'offer' | 'answer' | 'ice-candidate';
   roomId: string;
+  username?: string;
   data: any;
+};
+
+// User Status Types
+export type UserStatus = {
+  username: string;
+  isMuted: boolean;
+  isVideoOff: boolean;
 };
