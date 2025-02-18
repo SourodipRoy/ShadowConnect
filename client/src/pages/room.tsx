@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useParams, useSearch } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
-import type { UserStatus } from "@shared/schema";
 import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
 
 export default function Room() {
   const { roomId } = useParams();
-  const [searchParams] = useSearch();
-  const username = new URLSearchParams(searchParams).get("username");
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -20,14 +17,8 @@ export default function Room() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const peerConnection = useRef<RTCPeerConnection>();
   const localStream = useRef<MediaStream>();
-  const webSocket = useRef<WebSocket>();
 
   useEffect(() => {
-    if (!username) {
-      navigate("/");
-      return;
-    }
-
     const initializeMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -39,31 +30,16 @@ export default function Room() {
           localVideoRef.current.srcObject = stream;
         }
 
-        const { pc, ws } = await setupPeerConnection(
+        const { pc } = await setupPeerConnection(
           roomId!,
           stream,
-          username,
-          (remoteStream, remoteUserStatus) => {
+          (remoteStream) => {
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = remoteStream;
             }
-            setRemoteUser(remoteUserStatus);
           }
         );
         peerConnection.current = pc;
-        webSocket.current = ws;
-
-        // Send initial status
-        ws.send(JSON.stringify({
-          type: 'status-update',
-          roomId,
-          username,
-          data: {
-            username,
-            isMuted,
-            isVideoOff
-          }
-        }));
       } catch (err) {
         toast({
           title: "Media Error",
@@ -74,54 +50,28 @@ export default function Room() {
     };
 
     initializeMedia();
+
     return () => {
       localStream.current?.getTracks().forEach((track) => track.stop());
       peerConnection.current?.close();
-      webSocket.current?.close();
     };
-  }, [roomId, username, toast, navigate]);
-
-  const [remoteUser, setRemoteUser] = useState<UserStatus | null>(null);
+  }, [roomId, toast]);
 
   const toggleMute = () => {
-    if (localStream.current && webSocket.current) {
+    if (localStream.current) {
       localStream.current.getAudioTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
       setIsMuted(!isMuted);
-
-      // Broadcast status update
-      webSocket.current.send(JSON.stringify({
-        type: 'status-update',
-        roomId,
-        username,
-        data: {
-          username,
-          isMuted: !isMuted,
-          isVideoOff
-        }
-      }));
     }
   };
 
   const toggleVideo = () => {
-    if (localStream.current && webSocket.current) {
+    if (localStream.current) {
       localStream.current.getVideoTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
       setIsVideoOff(!isVideoOff);
-
-      // Broadcast status update
-      webSocket.current.send(JSON.stringify({
-        type: 'status-update',
-        roomId,
-        username,
-        data: {
-          username,
-          isMuted,
-          isVideoOff: !isVideoOff
-        }
-      }));
     }
   };
 
@@ -222,7 +172,6 @@ export default function Room() {
   const endCall = () => {
     localStream.current?.getTracks().forEach((track) => track.stop());
     peerConnection.current?.close();
-    webSocket.current?.close();
     navigate("/");
   };
 
@@ -235,13 +184,10 @@ export default function Room() {
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]"
+            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 text-sm text-white bg-black/50 px-2 py-1 rounded">
-            <span>{username}</span>
-            {isMuted && <MicOff className="w-4 h-4" />}
-            {isVideoOff && <VideoOff className="w-4 h-4" />}
-            {isScreenSharing && <Monitor className="w-4 h-4" />}
+          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
+            You {isScreenSharing && "(Screen Sharing)"}
           </div>
         </Card>
         <Card className="relative aspect-video">
@@ -249,12 +195,10 @@ export default function Room() {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]"
+            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 text-sm text-white bg-black/50 px-2 py-1 rounded">
-            <span>{remoteUser?.username || "Waiting..."}</span>
-            {remoteUser?.isMuted && <MicOff className="w-4 h-4" />}
-            {remoteUser?.isVideoOff && <VideoOff className="w-4 h-4" />}
+          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
+            Remote
           </div>
         </Card>
       </div>
@@ -293,9 +237,9 @@ export default function Room() {
         >
           <CameraIcon />
         </Button>
-        <Button
-          variant="destructive"
-          size="icon"
+        <Button 
+          variant="destructive" 
+          size="icon" 
           onClick={endCall}
           className="hover:bg-destructive/90 active:bg-destructive/80"
         >
