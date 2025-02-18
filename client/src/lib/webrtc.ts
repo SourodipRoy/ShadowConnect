@@ -79,3 +79,27 @@ export async function setupPeerConnection(
 
   return { pc, ws };
 }
+
+// Helper function to start screen sharing
+export async function startScreenShare(): Promise<MediaStream> {
+  return await navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: true
+  });
+}
+
+// Helper function to switch cameras
+export async function switchCamera(currentStream: MediaStream): Promise<MediaStream> {
+  const currentVideoTrack = currentStream.getVideoTracks()[0];
+  const currentFacingMode = currentVideoTrack.getSettings().facingMode;
+
+  // Toggle between front and back cameras
+  const newFacingMode = currentFacingMode === "user" ? "environment" : "user";
+
+  const newStream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: newFacingMode },
+    audio: true
+  });
+
+  return newStream;
+}
