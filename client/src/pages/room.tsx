@@ -15,8 +15,17 @@ export default function Room() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isScreenShareSupported, setIsScreenShareSupported] = useState(false);
   const peerConnection = useRef<RTCPeerConnection>();
   const localStream = useRef<MediaStream>();
+
+  useEffect(() => {
+    // Check if screen sharing is supported
+    setIsScreenShareSupported(
+      'getDisplayMedia' in navigator.mediaDevices || 
+      'mediaDevices' in navigator
+    );
+  }, []);
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -76,6 +85,15 @@ export default function Room() {
   };
 
   const toggleScreenShare = async () => {
+    if (!isScreenShareSupported) {
+      toast({
+        title: "Screen Sharing Not Available",
+        description: "Screen sharing is not supported on this device.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       if (!isScreenSharing) {
         const screenStream = await startScreenShare();
@@ -128,7 +146,7 @@ export default function Room() {
       console.error("Screen share error:", err);
       toast({
         title: "Screen Share Error",
-        description: "Could not share screen. Please make sure to select a screen to share.",
+        description: "Failed to share screen. Please try again.",
         variant: "destructive"
       });
     }
@@ -207,7 +225,7 @@ export default function Room() {
           variant={isMuted ? "destructive" : "secondary"}
           size="icon"
           onClick={toggleMute}
-          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
+          className="@media(hover: hover) { hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20 }"
         >
           {isMuted ? <MicOff /> : <Mic />}
         </Button>
@@ -215,7 +233,7 @@ export default function Room() {
           variant={isVideoOff ? "destructive" : "secondary"}
           size="icon"
           onClick={toggleVideo}
-          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
+          className="@media(hover: hover) { hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20 }"
         >
           {isVideoOff ? <VideoOff /> : <Video />}
         </Button>
@@ -223,8 +241,8 @@ export default function Room() {
           variant={isScreenSharing ? "destructive" : "secondary"}
           size="icon"
           onClick={toggleScreenShare}
-          disabled={isVideoOff}
-          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
+          disabled={isVideoOff || !isScreenShareSupported}
+          className="@media(hover: hover) { hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20 }"
         >
           <Monitor />
         </Button>
@@ -233,7 +251,7 @@ export default function Room() {
           size="icon"
           onClick={handleCameraSwitch}
           disabled={isVideoOff}
-          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
+          className="@media(hover: hover) { hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20 }"
         >
           <CameraIcon />
         </Button>
@@ -241,7 +259,7 @@ export default function Room() {
           variant="destructive" 
           size="icon" 
           onClick={endCall}
-          className="hover:bg-destructive/90 active:bg-destructive/80"
+          className="@media(hover: hover) { hover:bg-destructive/90 active:bg-destructive/80 }"
         >
           <Phone />
         </Button>
