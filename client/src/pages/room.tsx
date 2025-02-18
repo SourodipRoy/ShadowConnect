@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, CameraIcon } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
 import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
 
 export default function Room() {
@@ -87,14 +87,15 @@ export default function Room() {
           sender.track?.kind === "video"
         );
 
-        if (videoSender) {
-          videoSender.replaceTrack(videoTrack);
+        if (videoSender && videoTrack) {
+          await videoSender.replaceTrack(videoTrack);
         }
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
         }
 
+        // Handle when user stops sharing screen
         videoTrack.onended = () => {
           toggleScreenShare();
         };
@@ -104,7 +105,7 @@ export default function Room() {
         // Switch back to camera
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true
+          audio: localStream.current?.getAudioTracks()[0].enabled ?? true
         });
 
         const videoTrack = stream.getVideoTracks()[0];
@@ -113,8 +114,8 @@ export default function Room() {
           sender.track?.kind === "video"
         );
 
-        if (videoSender) {
-          videoSender.replaceTrack(videoTrack);
+        if (videoSender && videoTrack) {
+          await videoSender.replaceTrack(videoTrack);
         }
 
         if (localVideoRef.current) {
@@ -124,15 +125,18 @@ export default function Room() {
         setIsScreenSharing(false);
       }
     } catch (err) {
+      console.error("Screen share error:", err);
       toast({
         title: "Screen Share Error",
-        description: "Could not share screen",
+        description: "Could not share screen. Please make sure to select a screen to share.",
         variant: "destructive"
       });
     }
   };
 
   const handleCameraSwitch = async () => {
+    if (isVideoOff) return; // Disable camera switch when video is off
+
     try {
       if (localStream.current) {
         const newStream = await switchCamera(localStream.current);
@@ -144,8 +148,8 @@ export default function Room() {
           sender.track?.kind === "video"
         );
 
-        if (videoSender) {
-          videoSender.replaceTrack(videoTrack);
+        if (videoSender && videoTrack) {
+          await videoSender.replaceTrack(videoTrack);
         }
 
         // Update the local video
@@ -156,9 +160,10 @@ export default function Room() {
         localStream.current = newStream;
       }
     } catch (err) {
+      console.error("Camera switch error:", err);
       toast({
         title: "Camera Switch Error",
-        description: "Could not switch camera",
+        description: "Could not switch camera. Make sure you have multiple cameras available.",
         variant: "destructive"
       });
     }
@@ -179,7 +184,7 @@ export default function Room() {
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
             You {isScreenSharing && "(Screen Sharing)"}
@@ -190,7 +195,7 @@ export default function Room() {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
             Remote
@@ -216,6 +221,7 @@ export default function Room() {
           variant={isScreenSharing ? "destructive" : "secondary"}
           size="icon"
           onClick={toggleScreenShare}
+          disabled={isVideoOff}
         >
           <Monitor />
         </Button>
@@ -223,11 +229,12 @@ export default function Room() {
           variant="secondary"
           size="icon"
           onClick={handleCameraSwitch}
+          disabled={isVideoOff}
         >
           <CameraIcon />
         </Button>
         <Button variant="destructive" size="icon" onClick={endCall}>
-          <PhoneOff />
+          <Phone />
         </Button>
       </div>
     </div>
