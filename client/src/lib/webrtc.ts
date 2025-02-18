@@ -83,7 +83,11 @@ export async function setupPeerConnection(
 // Helper function to start screen sharing
 export async function startScreenShare(): Promise<MediaStream> {
   return await navigator.mediaDevices.getDisplayMedia({
-    video: true,
+    video: {
+      displaySurface: "monitor", // Prefer full screen
+      logicalSurface: true,
+      cursor: "always"
+    },
     audio: true
   });
 }

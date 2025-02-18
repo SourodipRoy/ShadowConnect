@@ -83,7 +83,7 @@ export default function Room() {
         // Replace the video track
         const videoTrack = screenStream.getVideoTracks()[0];
         const senders = peerConnection.current?.getSenders();
-        const videoSender = senders?.find((sender) => 
+        const videoSender = senders?.find((sender) =>
           sender.track?.kind === "video"
         );
 
@@ -110,7 +110,7 @@ export default function Room() {
 
         const videoTrack = stream.getVideoTracks()[0];
         const senders = peerConnection.current?.getSenders();
-        const videoSender = senders?.find((sender) => 
+        const videoSender = senders?.find((sender) =>
           sender.track?.kind === "video"
         );
 
@@ -144,7 +144,7 @@ export default function Room() {
 
         // Replace the video track in the peer connection
         const senders = peerConnection.current?.getSenders();
-        const videoSender = senders?.find((sender) => 
+        const videoSender = senders?.find((sender) =>
           sender.track?.kind === "video"
         );
 
@@ -207,6 +207,7 @@ export default function Room() {
           variant={isMuted ? "destructive" : "secondary"}
           size="icon"
           onClick={toggleMute}
+          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
         >
           {isMuted ? <MicOff /> : <Mic />}
         </Button>
@@ -214,6 +215,7 @@ export default function Room() {
           variant={isVideoOff ? "destructive" : "secondary"}
           size="icon"
           onClick={toggleVideo}
+          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
         >
           {isVideoOff ? <VideoOff /> : <Video />}
         </Button>
@@ -222,6 +224,7 @@ export default function Room() {
           size="icon"
           onClick={toggleScreenShare}
           disabled={isVideoOff}
+          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
         >
           <Monitor />
         </Button>
@@ -230,10 +233,16 @@ export default function Room() {
           size="icon"
           onClick={handleCameraSwitch}
           disabled={isVideoOff}
+          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
         >
           <CameraIcon />
         </Button>
-        <Button variant="destructive" size="icon" onClick={endCall}>
+        <Button 
+          variant="destructive" 
+          size="icon" 
+          onClick={endCall}
+          className="hover:bg-destructive/90 active:bg-destructive/80"
+        >
           <Phone />
         </Button>
       </div>
