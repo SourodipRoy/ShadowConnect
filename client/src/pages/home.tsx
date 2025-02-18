@@ -9,15 +9,24 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [roomId, setRoomId] = useState("");
+  const [createdRoomId, setCreatedRoomId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
+
+  const copyRoomId = () => {
+    navigator.clipboard.writeText(createdRoomId);
+    toast({
+      title: "Room ID copied",
+      description: "You can now share this with others",
+    });
+  };
 
   const createRoom = async () => {
     try {
       const res = await apiRequest("POST", "/api/rooms");
       const { roomId } = await res.json();
-      navigate(`/room/${roomId}`);
+      setCreatedRoomId(roomId);
     } catch (err) {
       toast({
         title: "Error creating room",
@@ -67,13 +76,26 @@ export default function Home() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button
-            onClick={createRoom}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Users className="mr-2 h-4 w-4" />
-            Create Room
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={createRoom}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Create Room
+            </Button>
+            {createdRoomId && (
+              <div className="flex gap-2 items-center bg-secondary p-2 rounded">
+                <div className="flex-1 font-mono">{createdRoomId}</div>
+                <Button size="sm" variant="outline" onClick={copyRoomId}>
+                  Copy
+                </Button>
+                <Button size="sm" onClick={() => navigate(`/room/${createdRoomId}`)}>
+                  Join
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
