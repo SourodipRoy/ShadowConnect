@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
-import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
+import { setupPeerConnection, startScreenShare, switchCamera, isScreenSharingSupported } from "@/lib/webrtc";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -15,6 +15,7 @@ export default function Room() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenSharingSupported] = useState(isScreenSharingSupported());
   const peerConnection = useRef<RTCPeerConnection>();
   const localStream = useRef<MediaStream>();
 
@@ -76,6 +77,15 @@ export default function Room() {
   };
 
   const toggleScreenShare = async () => {
+    if (!screenSharingSupported) {
+      toast({
+        title: "Screen Sharing Not Available",
+        description: "Screen sharing is not supported on your device. You can use the camera switch feature instead.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       if (!isScreenSharing) {
         const screenStream = await startScreenShare();
@@ -219,21 +229,25 @@ export default function Room() {
         >
           {isVideoOff ? <VideoOff /> : <Video />}
         </Button>
-        <Button
-          variant={isScreenSharing ? "destructive" : "secondary"}
-          size="icon"
-          onClick={toggleScreenShare}
-          disabled={isVideoOff}
-          className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
-        >
-          <Monitor />
-        </Button>
+        {screenSharingSupported && (
+          <Button
+            variant={isScreenSharing ? "destructive" : "secondary"}
+            size="icon"
+            onClick={toggleScreenShare}
+            disabled={isVideoOff}
+            className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
+            title={isVideoOff ? "Enable video to share screen" : "Share screen"}
+          >
+            <Monitor />
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="icon"
           onClick={handleCameraSwitch}
           disabled={isVideoOff}
           className="hover:bg-secondary-foreground/10 active:bg-secondary-foreground/20"
+          title={isVideoOff ? "Enable video to switch camera" : "Switch camera"}
         >
           <CameraIcon />
         </Button>
