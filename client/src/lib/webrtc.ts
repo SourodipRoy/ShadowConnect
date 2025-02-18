@@ -80,17 +80,8 @@ export async function setupPeerConnection(
   return { pc, ws };
 }
 
-// Helper function to check if screen sharing is supported
-export function isScreenSharingSupported(): boolean {
-  return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
-}
-
 // Helper function to start screen sharing
 export async function startScreenShare(): Promise<MediaStream> {
-  if (!isScreenSharingSupported()) {
-    throw new Error("Screen sharing is not supported on this device");
-  }
-
   return await navigator.mediaDevices.getDisplayMedia({
     video: {
       displaySurface: "monitor", // Prefer full screen
