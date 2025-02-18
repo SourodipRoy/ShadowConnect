@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [roomId, setRoomId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -26,16 +27,34 @@ export default function Home() {
     }
   };
 
-  const joinRoom = () => {
-    if (!roomId.trim()) {
+  const joinRoom = async () => {
+    if (!roomId.trim() || roomId.length !== 6) {
       toast({
         title: "Invalid room ID",
-        description: "Please enter a valid room ID",
+        description: "Please enter a valid 6-digit room ID",
         variant: "destructive"
       });
       return;
     }
-    navigate(`/room/${roomId}`);
+
+    try {
+      const res = await fetch(`/api/rooms/${roomId}`);
+      if (!res.ok) {
+        toast({
+          title: "Room not found",
+          description: "This room is not active",
+          variant: "destructive"
+        });
+        return;
+      }
+      navigate(`/room/${roomId}`);
+    } catch (err) {
+      toast({
+        title: "Error joining room",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -67,9 +86,17 @@ export default function Home() {
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="Enter Room ID"
+              placeholder="Enter 6-digit Room ID"
               value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 6) {
+                  setRoomId(value);
+                }
+              }}
+              pattern="\d{6}"
+              maxLength={6}
+              inputMode="numeric"
             />
             <Button onClick={joinRoom}>Join</Button>
           </div>

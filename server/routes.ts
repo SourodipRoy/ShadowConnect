@@ -12,7 +12,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const rooms = new Map<string, Set<WebSocket>>();
 
   app.post("/api/rooms", async (req, res) => {
-    const roomId = uuidv4();
+    // Generate 6 digit room ID
+    let roomId;
+    do {
+      roomId = Math.floor(100000 + Math.random() * 900000).toString();
+    } while (rooms.has(roomId));
+    
     await storage.createRoom({ roomId });
     res.json({ roomId });
   });
