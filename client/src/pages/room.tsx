@@ -214,9 +214,9 @@ export default function Room() {
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="relative aspect-video">
           {isVideoOff ? (
-            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center">
+            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center object-cover">
               <div 
-                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
+                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white flex-none"
                 style={{ 
                   backgroundColor: localCircleColor
                 }}
@@ -241,9 +241,9 @@ export default function Room() {
         </Card>
         <Card className="relative aspect-video">
           {remoteIsVideoOff ? (
-            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center">
+            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center object-cover">
               <div 
-                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
+                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white flex-none"
                 style={{ 
                   backgroundColor: localCircleColor //This should ideally be remoteCircleColor, but that information isn't available.
                 }}
