@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [roomId, setRoomId] = useState("");
+  const [username, setUsername] = useState("");
   const [createdRoomId, setCreatedRoomId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [, navigate] = useLocation();
@@ -56,7 +57,15 @@ export default function Home() {
         });
         return;
       }
-      navigate(`/room/${roomId}`);
+      if (!username.trim()) {
+        toast({
+          title: "Username required",
+          description: "Please enter a username",
+          variant: "destructive"
+        });
+        return;
+      }
+      navigate(`/room/${roomId}?username=${encodeURIComponent(username)}`);
     } catch (err) {
       toast({
         title: "Error joining room",
@@ -106,9 +115,16 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <Input
-              placeholder="Enter 6-digit Room ID"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter 6-digit Room ID"
               value={roomId}
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, '');

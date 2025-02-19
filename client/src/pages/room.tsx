@@ -10,6 +10,8 @@ export default function Room() {
   const { roomId } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [remoteUsername, setRemoteUsername] = useState<string>("");
+  const username = new URLSearchParams(window.location.search).get("username") || "Anonymous";
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -198,7 +200,7 @@ export default function Room() {
             className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
-            Remote
+            {remoteUsername || "Waiting for peer..."}
           </div>
         </Card>
       </div>
