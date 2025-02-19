@@ -11,6 +11,8 @@ export default function Room() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [remoteUsername, setRemoteUsername] = useState<string>("");
+  const [remoteIsMuted, setRemoteIsMuted] = useState(false);
+  const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
   const username = new URLSearchParams(window.location.search).get("username") || "Anonymous";
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -46,7 +48,7 @@ export default function Room() {
         // Create data channel for username exchange
         const dc = pc.createDataChannel("username");
         dc.onopen = () => {
-          dc.send(JSON.stringify({ username }));
+          dc.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff }));
         };
 
         // Handle receiving data channel
@@ -55,11 +57,13 @@ export default function Room() {
           channel.onmessage = (e) => {
             try {
               const data = JSON.parse(e.data);
-              if (data.username) {
+              if (data.type === 'state') {
                 setRemoteUsername(data.username);
+                setRemoteIsMuted(data.isMuted);
+                setRemoteIsVideoOff(data.isVideoOff);
               }
             } catch (error) {
-              console.error("Error parsing username data:", error);
+              console.error("Error parsing peer data:", error);
             }
           };
         };
@@ -85,7 +89,9 @@ export default function Room() {
       localStream.current.getAudioTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
-      setIsMuted(!isMuted);
+      const newMutedState = !isMuted;
+      setIsMuted(newMutedState);
+      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted: newMutedState, isVideoOff }));
     }
   };
 
@@ -94,7 +100,9 @@ export default function Room() {
       localStream.current.getVideoTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
-      setIsVideoOff(!isVideoOff);
+      const newVideoState = !isVideoOff;
+      setIsVideoOff(newVideoState);
+      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff: newVideoState }));
     }
   };
 
@@ -209,8 +217,10 @@ export default function Room() {
             playsInline
             className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
-          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
+          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             You {isScreenSharing && "(Screen Sharing)"}
+            {isMuted && <MicOff className="w-4 h-4" />}
+            {isVideoOff && <VideoOff className="w-4 h-4" />}
           </div>
         </Card>
         <Card className="relative aspect-video">
@@ -220,8 +230,10 @@ export default function Room() {
             playsInline
             className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
-          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
+          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             {remoteUsername || "Waiting for peer..."}
+            {remoteIsMuted && <MicOff className="w-4 h-4" />}
+            {remoteIsVideoOff && <VideoOff className="w-4 h-4" />}
           </div>
         </Card>
       </div>
