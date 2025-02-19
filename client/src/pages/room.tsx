@@ -212,53 +212,55 @@ export default function Room() {
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col">
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="relative aspect-video">
-          {isVideoOff ? (
-            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center object-cover">
-              <div 
-                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white flex-none"
-                style={{ 
-                  backgroundColor: localCircleColor
-                }}
-              >
-                {username.charAt(0).toUpperCase()}
+        <Card className="relative aspect-video overflow-hidden p-0 bg-transparent">
+          <div className="absolute inset-0 flex items-center justify-center">
+            {isVideoOff ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <div
+                  className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
+                  style={{ backgroundColor: localCircleColor }}
+                >
+                  {username.charAt(0).toUpperCase()}
+                </div>
               </div>
-            </div>
-          ) : (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover rounded-lg"
-            />
-          )}
+            ) : (
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             You {isScreenSharing && "(Screen Sharing)"}
             {isMuted && <MicOff className="w-4 h-4" />}
             {isVideoOff && <VideoOff className="w-4 h-4" />}
           </div>
         </Card>
-        <Card className="relative aspect-video">
-          {remoteIsVideoOff ? (
-            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center object-cover">
-              <div 
-                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white flex-none"
-                style={{ 
-                  backgroundColor: localCircleColor //This should ideally be remoteCircleColor, but that information isn't available.
-                }}
-              >
-                {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
+        <Card className="relative aspect-video overflow-hidden p-0 bg-transparent">
+          <div className="absolute inset-0 flex items-center justify-center">
+            {remoteIsVideoOff ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <div
+                  className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
+                  style={{ backgroundColor: localCircleColor }}
+                >
+                  {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
+                </div>
               </div>
-            </div>
-          ) : (
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover rounded-lg"
-            />
-          )}
+            ) : (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             {remoteUsername || "Waiting for peer..."}
             {remoteIsMuted && <MicOff className="w-4 h-4" />}
