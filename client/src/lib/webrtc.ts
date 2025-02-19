@@ -24,16 +24,6 @@ export async function setupPeerConnection(
   const wsUrl = `${protocol}//${window.location.host}/ws`;
   const ws = new WebSocket(wsUrl);
 
-  // Handle WebSocket errors
-  ws.onerror = (error) => {
-    console.error('WebSocket Error:', error);
-  };
-
-  // Handle WebSocket closure
-  ws.onclose = () => {
-    console.log('WebSocket connection closed');
-  };
-
   ws.onmessage = async (event) => {
     const { type, data } = JSON.parse(event.data);
 
@@ -111,11 +101,7 @@ export async function switchCamera(currentStream: MediaStream): Promise<MediaStr
   const newFacingMode = currentFacingMode === "user" ? "environment" : "user";
 
   const newStream = await navigator.mediaDevices.getUserMedia({
-    video: { 
-      facingMode: newFacingMode,
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
+    video: { facingMode: newFacingMode },
     audio: true
   });
 

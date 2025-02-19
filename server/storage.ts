@@ -33,4 +33,3 @@ export class MemStorage implements IStorage {
 }
 
 export const storage = new MemStorage();
-export const rooms = new Map<string, Set<WebSocket>>();

@@ -13,9 +13,6 @@ export default function Room() {
   const [remoteUsername, setRemoteUsername] = useState<string>("");
   const [remoteIsMuted, setRemoteIsMuted] = useState(false);
   const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
-  const [isHost, setIsHost] = useState(false);
-  const [joinRequest, setJoinRequest] = useState<string | null>(null);
-  const [waitingForAccept, setWaitingForAccept] = useState(false);
   const username = new URLSearchParams(window.location.search).get("username") || "Anonymous";
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -27,23 +24,7 @@ export default function Room() {
   const dataChannel = useRef<RTCDataChannel>();
 
   useEffect(() => {
-    // Check if room is empty to set as host
-    const checkHost = async () => {
-      const response = await fetch(`/api/room/${roomId}/check`);
-      const { isEmpty } = await response.json();
-      setIsHost(isEmpty);
-      if (!isEmpty) {
-        setWaitingForAccept(true);
-        // Send join request
-        dataChannel.current?.send(JSON.stringify({ 
-          type: 'joinRequest', 
-          username 
-        }));
-      }
-    };
-
     const initializeMedia = async () => {
-      await checkHost();
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -68,7 +49,7 @@ export default function Room() {
         // Create data channel for username exchange
         dataChannel.current = pc.createDataChannel("username");
         dataChannel.current.onopen = () => {
-          dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff, isHost }));
+          dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff }));
         };
 
         // Handle receiving data channel
@@ -81,17 +62,6 @@ export default function Room() {
                 setRemoteUsername(data.username);
                 setRemoteIsMuted(data.isMuted);
                 setRemoteIsVideoOff(data.isVideoOff);
-                setWaitingForAccept(false);
-              } else if (data.type === 'joinRequest' && isHost) {
-                setJoinRequest(data.username);
-              } else if (data.type === 'joinResponse') {
-                if (data.accepted) {
-                  setWaitingForAccept(false);
-                } else {
-                  navigate('/');
-                }
-              } else if (data.type === 'hostLeft') {
-                setIsHost(true);
               }
             } catch (error) {
               console.error("Error parsing peer data:", error);
@@ -111,11 +81,7 @@ export default function Room() {
 
     return () => {
       localStream.current?.getTracks().forEach((track) => track.stop());
-      if (peerConnection.current) {
-        peerConnection.current.close();
-        peerConnection.current = undefined;
-      }
-      dataChannel.current = undefined;
+      peerConnection.current?.close();
     };
   }, [roomId, toast]);
 
@@ -241,37 +207,8 @@ export default function Room() {
     navigate("/");
   };
 
-  const handleJoinResponse = (accepted: boolean) => {
-    dataChannel.current?.send(JSON.stringify({ 
-      type: 'joinResponse', 
-      accepted 
-    }));
-    setJoinRequest(null);
-  };
-
-  if (waitingForAccept) {
-    return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <Card className="p-6">
-          <h2 className="text-xl mb-4">Waiting for host to accept your request...</h2>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col">
-      {isHost && joinRequest && (
-        <div className="fixed top-4 right-4 z-50">
-          <Card className="p-4">
-            <p className="mb-4">{joinRequest} wants to join this call</p>
-            <div className="flex gap-2">
-              <Button onClick={() => handleJoinResponse(true)}>Accept</Button>
-              <Button variant="destructive" onClick={() => handleJoinResponse(false)}>Reject</Button>
-            </div>
-          </Card>
-        </div>
-      )}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="relative aspect-video">
           <video
@@ -295,7 +232,7 @@ export default function Room() {
             className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
-            {remoteUsername ? `${remoteUsername}${!isHost ? " (Host)" : ""}` : "Waiting for peer..."}
+            {remoteUsername || "Waiting for peer..."}
             {remoteIsMuted && <MicOff className="w-4 h-4" />}
             {remoteIsVideoOff && <VideoOff className="w-4 h-4" />}
           </div>
