@@ -4,6 +4,9 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { v4 as uuidv4 } from "uuid";
 import type { SignalMessage } from "@shared/schema";
+import { z } from "zod";
+import { publicProcedure, router } from "./trpc";
+import { rooms } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -17,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     do {
       roomId = Math.floor(100000 + Math.random() * 900000).toString();
     } while (rooms.has(roomId));
-    
+
     await storage.createRoom({ roomId });
     res.json({ roomId });
   });
@@ -70,3 +73,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+
+export const appRouter = router({
+  checkRoom: publicProcedure
+    .input(z.string())
+    .query(({ input: roomId }) => {
+      return { isEmpty: !rooms.has(roomId) };
+    }),
+});

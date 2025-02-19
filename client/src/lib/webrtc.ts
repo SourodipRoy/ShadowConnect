@@ -101,7 +101,11 @@ export async function switchCamera(currentStream: MediaStream): Promise<MediaStr
   const newFacingMode = currentFacingMode === "user" ? "environment" : "user";
 
   const newStream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: newFacingMode },
+    video: { 
+      facingMode: newFacingMode,
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    },
     audio: true
   });
 
