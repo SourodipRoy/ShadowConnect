@@ -42,6 +42,27 @@ export default function Room() {
           }
         );
         peerConnection.current = pc;
+
+        // Create data channel for username exchange
+        const dc = pc.createDataChannel("username");
+        dc.onopen = () => {
+          dc.send(JSON.stringify({ username }));
+        };
+
+        // Handle receiving data channel
+        pc.ondatachannel = (event) => {
+          const channel = event.channel;
+          channel.onmessage = (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (data.username) {
+                setRemoteUsername(data.username);
+              }
+            } catch (error) {
+              console.error("Error parsing username data:", error);
+            }
+          };
+        };
       } catch (err) {
         toast({
           title: "Media Error",
@@ -200,7 +221,7 @@ export default function Room() {
             className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
-            {remoteUsername || "Remote"}
+            {remoteUsername || "Waiting for peer..."}
           </div>
         </Card>
       </div>
