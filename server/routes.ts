@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { v4 as uuidv4 } from "uuid";
 import type { SignalMessage } from "@shared/schema";
 import { z } from "zod";
-import { publicProcedure, router } from "./trpc";
+import { publicProcedure, router } from "./trpc.js";
 import { rooms } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
