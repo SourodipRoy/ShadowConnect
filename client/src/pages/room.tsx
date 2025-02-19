@@ -211,13 +211,26 @@ export default function Room() {
     <div className="min-h-screen bg-background p-4 flex flex-col">
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="relative aspect-video">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover rounded-lg"
-          />
+          {isVideoOff ? (
+            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center">
+              <div 
+                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
+                style={{ 
+                  backgroundColor: `hsl(${Math.random() * 360}, 70%, 60%)`
+                }}
+              >
+                {username.charAt(0).toUpperCase()}
+              </div>
+            </div>
+          ) : (
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover rounded-lg"
+            />
+          )}
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             You {isScreenSharing && "(Screen Sharing)"}
             {isMuted && <MicOff className="w-4 h-4" />}
@@ -225,12 +238,25 @@ export default function Room() {
           </div>
         </Card>
         <Card className="relative aspect-video">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover rounded-lg"
-          />
+          {remoteIsVideoOff ? (
+            <div className="w-full h-full bg-black rounded-lg flex items-center justify-center">
+              <div 
+                className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
+                style={{ 
+                  backgroundColor: `hsl(${Math.random() * 360}, 70%, 60%)`
+                }}
+              >
+                {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
+              </div>
+            </div>
+          ) : (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover rounded-lg"
+            />
+          )}
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             {remoteUsername || "Waiting for peer..."}
             {remoteIsMuted && <MicOff className="w-4 h-4" />}
