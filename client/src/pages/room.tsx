@@ -21,6 +21,7 @@ export default function Room() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const peerConnection = useRef<RTCPeerConnection>();
   const localStream = useRef<MediaStream>();
+  const dataChannel = useRef<RTCDataChannel>();
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -46,9 +47,9 @@ export default function Room() {
         peerConnection.current = pc;
 
         // Create data channel for username exchange
-        const dc = pc.createDataChannel("username");
-        dc.onopen = () => {
-          dc.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff }));
+        dataChannel.current = pc.createDataChannel("username");
+        dataChannel.current.onopen = () => {
+          dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff }));
         };
 
         // Handle receiving data channel
