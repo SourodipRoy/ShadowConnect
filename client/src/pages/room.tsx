@@ -200,7 +200,7 @@ export default function Room() {
             className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded">
-            {remoteUsername || "Waiting for peer..."}
+            {remoteUsername || "Remote"}
           </div>
         </Card>
       </div>

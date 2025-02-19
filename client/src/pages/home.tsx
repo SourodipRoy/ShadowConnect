@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,21 @@ export default function Home() {
     });
   };
 
+  const validateUsername = () => {
+    if (!username.trim()) {
+      toast({
+        title: "Username required",
+        description: "Please enter a username",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
+
   const createRoom = async () => {
+    if (!validateUsername()) return;
+    
     try {
       const res = await apiRequest("POST", "/api/rooms");
       const { roomId } = await res.json();
@@ -38,6 +53,8 @@ export default function Home() {
   };
 
   const joinRoom = async () => {
+    if (!validateUsername()) return;
+
     if (!roomId.trim() || roomId.length !== 6) {
       toast({
         title: "Invalid room ID",
@@ -57,14 +74,6 @@ export default function Home() {
         });
         return;
       }
-      if (!username.trim()) {
-        toast({
-          title: "Username required",
-          description: "Please enter a username",
-          variant: "destructive"
-        });
-        return;
-      }
       navigate(`/room/${roomId}?username=${encodeURIComponent(username)}`);
     } catch (err) {
       toast({
@@ -73,6 +82,11 @@ export default function Home() {
         variant: "destructive"
       });
     }
+  };
+
+  const joinCreatedRoom = () => {
+    if (!validateUsername()) return;
+    navigate(`/room/${createdRoomId}?username=${encodeURIComponent(username)}`);
   };
 
   return (
@@ -85,6 +99,18 @@ export default function Home() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="username" className="text-sm font-medium">
+              Username
+            </label>
+            <Input
+              id="username"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Button
               onClick={createRoom}
@@ -99,7 +125,7 @@ export default function Home() {
                 <Button size="sm" variant="outline" onClick={copyRoomId}>
                   Copy
                 </Button>
-                <Button size="sm" onClick={() => navigate(`/room/${createdRoomId}`)}>
+                <Button size="sm" onClick={joinCreatedRoom}>
                   Join
                 </Button>
               </div>
@@ -115,13 +141,7 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <div className="space-y-2">
-            <Input
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
+          <div>
             <div className="flex gap-2">
               <Input
                 placeholder="Enter 6-digit Room ID"
