@@ -216,7 +216,7 @@ export default function Room() {
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
+            className="w-full h-full object-cover rounded-lg"
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             You {isScreenSharing && "(Screen Sharing)"}
@@ -229,7 +229,7 @@ export default function Room() {
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover rounded-lg transform scale-x-[-1]" // Flip horizontally
+            className="w-full h-full object-cover rounded-lg"
           />
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
             {remoteUsername || "Waiting for peer..."}
