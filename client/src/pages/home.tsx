@@ -125,18 +125,19 @@ export default function Home() {
             <div className="flex gap-2">
               <Input
                 placeholder="Enter 6-digit Room ID"
-              value={roomId}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '');
-                if (value.length <= 6) {
-                  setRoomId(value);
-                }
-              }}
-              pattern="\d{6}"
-              maxLength={6}
-              inputMode="numeric"
-            />
-            <Button onClick={joinRoom}>Join</Button>
+                value={roomId}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  if (value.length <= 6) {
+                    setRoomId(value);
+                  }
+                }}
+                pattern="\d{6}"
+                maxLength={6}
+                inputMode="numeric"
+              />
+              <Button onClick={joinRoom}>Join</Button>
+            </div>
           </div>
         </CardContent>
       </Card>
