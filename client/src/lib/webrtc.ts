@@ -24,6 +24,16 @@ export async function setupPeerConnection(
   const wsUrl = `${protocol}//${window.location.host}/ws`;
   const ws = new WebSocket(wsUrl);
 
+  // Handle WebSocket errors
+  ws.onerror = (error) => {
+    console.error('WebSocket Error:', error);
+  };
+
+  // Handle WebSocket closure
+  ws.onclose = () => {
+    console.log('WebSocket connection closed');
+  };
+
   ws.onmessage = async (event) => {
     const { type, data } = JSON.parse(event.data);
 

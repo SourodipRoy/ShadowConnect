@@ -12,8 +12,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  const rooms = new Map<string, Set<WebSocket>>();
-
   app.post("/api/rooms", async (req, res) => {
     // Generate 6 digit room ID
     let roomId;

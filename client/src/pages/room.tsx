@@ -111,7 +111,11 @@ export default function Room() {
 
     return () => {
       localStream.current?.getTracks().forEach((track) => track.stop());
-      peerConnection.current?.close();
+      if (peerConnection.current) {
+        peerConnection.current.close();
+        peerConnection.current = undefined;
+      }
+      dataChannel.current = undefined;
     };
   }, [roomId, toast]);
 
