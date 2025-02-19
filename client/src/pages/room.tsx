@@ -22,6 +22,7 @@ export default function Room() {
   const peerConnection = useRef<RTCPeerConnection>();
   const localStream = useRef<MediaStream>();
   const dataChannel = useRef<RTCDataChannel>();
+  const [localCircleColor, setLocalCircleColor] = useState<string>(`hsl(${Math.random() * 360}, 70%, 60%)`); // Added state for local user's circle color
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -49,7 +50,7 @@ export default function Room() {
         // Create data channel for username exchange
         dataChannel.current = pc.createDataChannel("username");
         dataChannel.current.onopen = () => {
-          dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff }));
+          dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff, localCircleColor })); // Send localCircleColor
         };
 
         // Handle receiving data channel
@@ -62,6 +63,7 @@ export default function Room() {
                 setRemoteUsername(data.username);
                 setRemoteIsMuted(data.isMuted);
                 setRemoteIsVideoOff(data.isVideoOff);
+                //Handle remote color if needed in future
               }
             } catch (error) {
               console.error("Error parsing peer data:", error);
@@ -83,7 +85,7 @@ export default function Room() {
       localStream.current?.getTracks().forEach((track) => track.stop());
       peerConnection.current?.close();
     };
-  }, [roomId, toast]);
+  }, [roomId, toast, localCircleColor]); // Added localCircleColor to the dependency array
 
   const toggleMute = () => {
     if (localStream.current) {
@@ -92,7 +94,7 @@ export default function Room() {
       });
       const newMutedState = !isMuted;
       setIsMuted(newMutedState);
-      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted: newMutedState, isVideoOff }));
+      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted: newMutedState, isVideoOff, localCircleColor })); //Send localCircleColor
     }
   };
 
@@ -103,7 +105,7 @@ export default function Room() {
       });
       const newVideoState = !isVideoOff;
       setIsVideoOff(newVideoState);
-      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff: newVideoState }));
+      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff: newVideoState, localCircleColor })); //Send localCircleColor
     }
   };
 
@@ -216,7 +218,7 @@ export default function Room() {
               <div 
                 className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
                 style={{ 
-                  backgroundColor: `hsl(${Math.random() * 360}, 70%, 60%)`
+                  backgroundColor: localCircleColor
                 }}
               >
                 {username.charAt(0).toUpperCase()}
@@ -243,7 +245,7 @@ export default function Room() {
               <div 
                 className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
                 style={{ 
-                  backgroundColor: `hsl(${Math.random() * 360}, 70%, 60%)`
+                  backgroundColor: localCircleColor //This should ideally be remoteCircleColor, but that information isn't available.
                 }}
               >
                 {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
