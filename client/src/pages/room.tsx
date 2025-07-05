@@ -13,6 +13,7 @@ export default function Room() {
   const [remoteUsername, setRemoteUsername] = useState<string>("");
   const [remoteIsMuted, setRemoteIsMuted] = useState(false);
   const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
+  const [remoteCircleColor, setRemoteCircleColor] = useState<string>(`hsl(${Math.random() * 360}, 70%, 60%)`);
   const username = new URLSearchParams(window.location.search).get("username") || "Anonymous";
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -63,7 +64,9 @@ export default function Room() {
                 setRemoteUsername(data.username);
                 setRemoteIsMuted(data.isMuted);
                 setRemoteIsVideoOff(data.isVideoOff);
-                //Handle remote color if needed in future
+                if (data.localCircleColor) {
+                  setRemoteCircleColor(data.localCircleColor);
+                }
               }
             } catch (error) {
               console.error("Error parsing peer data:", error);
@@ -246,7 +249,7 @@ export default function Room() {
               <div className="w-full h-full flex items-center justify-center">
                 <div
                   className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
-                  style={{ backgroundColor: localCircleColor }}
+                  style={{ backgroundColor: remoteCircleColor }}
                 >
                   {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
                 </div>
