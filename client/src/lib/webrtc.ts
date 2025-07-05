@@ -85,7 +85,8 @@ export async function startScreenShare(): Promise<MediaStream> {
   return await navigator.mediaDevices.getDisplayMedia({
     video: {
       displaySurface: "monitor", // Prefer full screen
-      // Hide cursor is not supported by all browsers
+      logicalSurface: true,
+      cursor: "always"
     },
     audio: true
   });
