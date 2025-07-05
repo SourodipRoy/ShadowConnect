@@ -25,6 +25,7 @@ export default function Room() {
   const localStream = useRef<MediaStream>();
   const dataChannel = useRef<RTCDataChannel>();
   const [localCircleColor, setLocalCircleColor] = useState<string>(`hsl(${Math.random() * 360}, 70%, 60%)`); // Added state for local user's circle color
+  const [facingMode, setFacingMode] = useState<"user" | "environment" | null>(null);
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -36,6 +37,11 @@ export default function Room() {
         localStream.current = stream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+        }
+
+        const trackFacingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
+        if (trackFacingMode === "user" || trackFacingMode === "environment") {
+          setFacingMode(trackFacingMode);
         }
 
         const { pc } = await setupPeerConnection(
@@ -133,6 +139,8 @@ export default function Room() {
           localVideoRef.current.srcObject = screenStream;
         }
 
+        setFacingMode(null);
+
         // Handle when user stops sharing screen
         videoTrack.onended = () => {
           toggleScreenShare();
@@ -158,6 +166,11 @@ export default function Room() {
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+        }
+
+        const trackFacingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
+        if (trackFacingMode === "user" || trackFacingMode === "environment") {
+          setFacingMode(trackFacingMode);
         }
 
         setIsScreenSharing(false);
@@ -194,6 +207,10 @@ export default function Room() {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = newStream;
         }
+        const trackFacingMode = newStream.getVideoTracks()[0]?.getSettings().facingMode;
+        if (trackFacingMode === "user" || trackFacingMode === "environment") {
+          setFacingMode(trackFacingMode);
+        }
 
         localStream.current = newStream;
       }
@@ -224,6 +241,7 @@ export default function Room() {
               muted
               playsInline
               className={cn("w-full h-full object-cover", isVideoOff && "hidden")}
+              style={{ transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
             />
             {isVideoOff && (
               <div className="w-full h-full flex items-center justify-center">
