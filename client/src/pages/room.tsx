@@ -5,13 +5,6 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
 import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export default function Room() {
@@ -33,35 +26,12 @@ export default function Room() {
   const dataChannel = useRef<RTCDataChannel>();
   const [localCircleColor, setLocalCircleColor] = useState<string>(`hsl(${Math.random() * 360}, 70%, 60%)`); // Added state for local user's circle color
   const [facingMode, setFacingMode] = useState<"user" | "environment" | null>(null);
-  type VideoQualityOption = "auto" | "144p" | "240p" | "360p" | "480p" | "720p" | "1080p" | "max";
-  const [videoQuality, setVideoQuality] = useState<VideoQualityOption>("auto");
-
-  const getVideoConstraints = (quality: VideoQualityOption): MediaTrackConstraints | boolean => {
-    switch (quality) {
-      case "144p":
-        return { width: { ideal: 256 }, height: { ideal: 144 } };
-      case "240p":
-        return { width: { ideal: 426 }, height: { ideal: 240 } };
-      case "360p":
-        return { width: { ideal: 640 }, height: { ideal: 360 } };
-      case "480p":
-        return { width: { ideal: 854 }, height: { ideal: 480 } };
-      case "720p":
-        return { width: { ideal: 1280 }, height: { ideal: 720 } };
-      case "1080p":
-        return { width: { ideal: 1920 }, height: { ideal: 1080 } };
-      case "max":
-        return { width: { ideal: 4096 }, height: { ideal: 2160 } };
-      default:
-        return true;
-    }
-  };
 
   useEffect(() => {
     const initializeMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: getVideoConstraints(videoQuality),
+          video: true,
           audio: true
         });
         localStream.current = stream;
@@ -127,29 +97,6 @@ export default function Room() {
     };
   }, [roomId, toast, localCircleColor]); // Added localCircleColor to the dependency array
 
-  const changeVideoQuality = async (quality: VideoQualityOption) => {
-    setVideoQuality(quality);
-    const track = localStream.current?.getVideoTracks()[0];
-    if (!track) return;
-    try {
-      const constraints = getVideoConstraints(quality);
-      if (typeof constraints === "boolean") {
-        if (constraints) {
-          await track.applyConstraints({});
-        }
-      } else {
-        await track.applyConstraints(constraints);
-      }
-    } catch (err) {
-      console.error("Quality change error:", err);
-      toast({
-        title: "Video Quality Error",
-        description: "Could not change video quality",
-        variant: "destructive"
-      });
-    }
-  };
-
   const toggleMute = () => {
     if (localStream.current) {
       localStream.current.getAudioTracks().forEach((track) => {
@@ -203,7 +150,7 @@ export default function Room() {
       } else {
         // Switch back to camera
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: getVideoConstraints(videoQuality),
+          video: true,
           audio: localStream.current?.getAudioTracks()[0].enabled ?? true
         });
 
@@ -306,24 +253,6 @@ export default function Room() {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="absolute top-4 left-4 text-xs">
-            <Select value={videoQuality} onValueChange={changeVideoQuality} disabled={isVideoOff || isScreenSharing}>
-              <SelectTrigger className="w-24 h-8 bg-black/50 text-white border-none">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Auto</SelectItem>
-                <SelectItem value="144p">144p</SelectItem>
-                <SelectItem value="240p">240p</SelectItem>
-                <SelectItem value="360p">360p</SelectItem>
-                <SelectItem value="480p">480p</SelectItem>
-                <SelectItem value="720p">720p</SelectItem>
-                <SelectItem value="1080p">1080p</SelectItem>
-                <SelectItem value="max">Max</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
