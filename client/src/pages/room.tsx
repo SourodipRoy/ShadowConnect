@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
 import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
+import { cn } from "@/lib/utils";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -217,7 +218,14 @@ export default function Room() {
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="relative aspect-video overflow-hidden p-0 bg-transparent">
           <div className="absolute inset-0 flex items-center justify-center">
-            {isVideoOff ? (
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className={cn("w-full h-full object-cover", isVideoOff && "hidden")}
+            />
+            {isVideoOff && (
               <div className="w-full h-full flex items-center justify-center">
                 <div
                   className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
@@ -226,14 +234,6 @@ export default function Room() {
                   {username.charAt(0).toUpperCase()}
                 </div>
               </div>
-            ) : (
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
             )}
           </div>
 
@@ -245,7 +245,13 @@ export default function Room() {
         </Card>
         <Card className="relative aspect-video overflow-hidden p-0 bg-transparent">
           <div className="absolute inset-0 flex items-center justify-center">
-            {remoteIsVideoOff ? (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={cn("w-full h-full object-cover", remoteIsVideoOff && "hidden")}
+            />
+            {remoteIsVideoOff && (
               <div className="w-full h-full flex items-center justify-center">
                 <div
                   className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
@@ -254,13 +260,6 @@ export default function Room() {
                   {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
                 </div>
               </div>
-            ) : (
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
             )}
           </div>
 
