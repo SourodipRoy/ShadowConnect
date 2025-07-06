@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
 import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
 import { cn } from "@/lib/utils";
+import ChatSheet from "@/components/chat-sheet";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -289,6 +290,7 @@ export default function Room() {
         </Card>
       </div>
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-4 bg-secondary p-4 rounded-full shadow-lg">
+        <ChatSheet roomId={roomId!} username={username} />
         <Button
           variant={isMuted ? "destructive" : "secondary"}
           size="icon"
