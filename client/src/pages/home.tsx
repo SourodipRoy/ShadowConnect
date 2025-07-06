@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { Video, Users } from "lucide-react";
-import ThemeToggle from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -98,7 +97,6 @@ export default function Home() {
             <Video className="w-6 h-6" />
             Video Chat
           </CardTitle>
-          <ThemeToggle />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
