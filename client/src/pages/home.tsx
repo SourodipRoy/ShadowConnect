@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { Video, Users } from "lucide-react";
+import ThemeToggle from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -92,11 +93,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <Video className="w-6 h-6" />
             Video Chat
           </CardTitle>
+          <ThemeToggle />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">

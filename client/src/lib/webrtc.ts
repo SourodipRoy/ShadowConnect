@@ -85,7 +85,8 @@ export async function startScreenShare(): Promise<MediaStream> {
   return await navigator.mediaDevices.getDisplayMedia({
     video: {
       displaySurface: "monitor", // Prefer full screen
-      logicalSurface: true,
+      // `logicalSurface` is not yet part of the TypeScript DOM lib, so cast to any
+      ...( { logicalSurface: true } as any ),
       cursor: "always"
     },
     audio: true
