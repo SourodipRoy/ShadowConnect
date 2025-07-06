@@ -43,12 +43,23 @@ export default function ChatSheet({ roomId, username }: { roomId: string; userna
         <SheetHeader>
           <SheetTitle>Chat</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto mt-4 space-y-2">
-          {messages.map((m, idx) => (
-            <div key={idx} className="border p-2 rounded">
-              <strong>{m.username}: </strong>{m.message}
-            </div>
-          ))}
+        <div className="flex-1 overflow-y-auto mt-4 space-y-2 flex flex-col">
+          {messages.map((m, idx) => {
+            const isSelf = m.username === username;
+            return (
+              <div
+                key={idx}
+                className={
+                  "p-2 rounded max-w-xs " +
+                  (isSelf
+                    ? "bg-primary text-primary-foreground self-end"
+                    : "bg-secondary text-secondary-foreground self-start")
+                }
+              >
+                {m.message}
+              </div>
+            );
+          })}
         </div>
         <div className="mt-2 flex gap-2">
           <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message" />
