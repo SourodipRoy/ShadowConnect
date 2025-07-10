@@ -1,11 +1,12 @@
-import { pgTable, text, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const rooms = pgTable("rooms", {
   id: serial("id").primaryKey(),
   roomId: text("room_id").notNull().unique(),
-  createdAt: text("created_at").notNull()
+  createdAt: text("created_at").notNull(),
+  maxParticipants: integer("max_participants").notNull().default(2)
 });
 
 export const insertRoomSchema = createInsertSchema(rooms).omit({
