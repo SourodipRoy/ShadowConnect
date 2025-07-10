@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { Video, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Home() {
   const [roomId, setRoomId] = useState("");
   const [username, setUsername] = useState("");
   const [createdRoomId, setCreatedRoomId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [maxParticipants, setMaxParticipants] = useState<string>("2");
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -38,9 +40,11 @@ export default function Home() {
 
   const createRoom = async () => {
     if (!validateUsername()) return;
-    
+
     try {
-      const res = await apiRequest("POST", "/api/rooms");
+      const res = await apiRequest("POST", "/api/rooms", {
+        maxParticipants,
+      });
       const { roomId } = await res.json();
       setCreatedRoomId(roomId);
     } catch (err) {
@@ -74,6 +78,15 @@ export default function Home() {
         });
         return;
       }
+      const room = await res.json();
+      if (room.maxParticipants !== Infinity && room.participants >= room.maxParticipants) {
+        toast({
+          title: "Room full",
+          description: "No slots available in this room",
+          variant: "destructive"
+        });
+        return;
+      }
       navigate(`/room/${roomId}?username=${encodeURIComponent(username)}`);
     } catch (err) {
       toast({
@@ -84,9 +97,22 @@ export default function Home() {
     }
   };
 
-  const joinCreatedRoom = () => {
+  const joinCreatedRoom = async () => {
     if (!validateUsername()) return;
-    navigate(`/room/${createdRoomId}?username=${encodeURIComponent(username)}`);
+    try {
+      const res = await fetch(`/api/rooms/${createdRoomId}`);
+      if (!res.ok) return;
+      const room = await res.json();
+      if (room.maxParticipants !== Infinity && room.participants >= room.maxParticipants) {
+        toast({
+          title: "Room full",
+          description: "No slots available in this room",
+          variant: "destructive"
+        });
+        return;
+      }
+      navigate(`/room/${createdRoomId}?username=${encodeURIComponent(username)}`);
+    } catch (_) {}
   };
 
   return (
@@ -103,19 +129,34 @@ export default function Home() {
             <label htmlFor="username" className="text-sm font-medium">
               Username
             </label>
-            <Input
-              id="username"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Button
-              onClick={createRoom}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+          <Input
+            id="username"
+            placeholder="Enter your username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Max Participants</label>
+          <Select value={maxParticipants} onValueChange={setMaxParticipants}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2">2</SelectItem>
+              <SelectItem value="3">3</SelectItem>
+              <SelectItem value="4">4</SelectItem>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="Infinity">No Limit</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Button
+            onClick={createRoom}
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          >
               <Users className="mr-2 h-4 w-4" />
               Create Room
             </Button>
