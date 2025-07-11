@@ -18,9 +18,8 @@ export class MemStorage implements IStorage {
     const id = this.currentId++;
     const room: Room = {
       id,
-      createdAt: new Date().toISOString(),
-      maxParticipants: insertRoom.maxParticipants ?? 2,
       ...insertRoom,
+      createdAt: new Date().toISOString()
     };
     this.rooms.set(id, room);
     return room;
