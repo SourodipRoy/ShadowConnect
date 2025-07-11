@@ -4,27 +4,39 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Phone, Monitor, CameraIcon } from "lucide-react";
-import { setupPeerConnection, startScreenShare, switchCamera } from "@/lib/webrtc";
+import { setupMesh, startScreenShare, switchCamera } from "@/lib/webrtc";
 import { cn } from "@/lib/utils";
 import ChatSheet from "@/components/chat-sheet";
+
+function RemoteVideo({ stream }: { stream: MediaStream }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.srcObject = stream;
+    }
+  }, [stream]);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      className="w-full h-full object-cover"
+    />
+  );
+}
 
 export default function Room() {
   const { roomId } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [remoteUsername, setRemoteUsername] = useState<string>("");
-  const [remoteIsMuted, setRemoteIsMuted] = useState(false);
-  const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
-  const [remoteCircleColor, setRemoteCircleColor] = useState<string>(`hsl(${Math.random() * 360}, 70%, 60%)`);
-  const username = new URLSearchParams(window.location.search).get("username") || "Anonymous";
+  const [remoteStreams, setRemoteStreams] = useState<{ id: string; stream: MediaStream }[]>([]);
+ const username = new URLSearchParams(window.location.search).get("username") || "Anonymous";
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const peerConnection = useRef<RTCPeerConnection>();
+  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStream = useRef<MediaStream>();
-  const dataChannel = useRef<RTCDataChannel>();
   const [localCircleColor, setLocalCircleColor] = useState<string>(`hsl(${Math.random() * 360}, 70%, 60%)`); // Added state for local user's circle color
   const [facingMode, setFacingMode] = useState<"user" | "environment" | null>(null);
 
@@ -45,42 +57,20 @@ export default function Room() {
           setFacingMode(trackFacingMode);
         }
 
-        const { pc } = await setupPeerConnection(
-          roomId!,
-          stream,
-          (remoteStream) => {
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = remoteStream;
-            }
-          }
-        );
-        peerConnection.current = pc;
-
-        // Create data channel for username exchange
-        dataChannel.current = pc.createDataChannel("username");
-        dataChannel.current.onopen = () => {
-          dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff, localCircleColor })); // Send localCircleColor
-        };
-
-        // Handle receiving data channel
-        pc.ondatachannel = (event) => {
-          const channel = event.channel;
-          channel.onmessage = (e) => {
-            try {
-              const data = JSON.parse(e.data);
-              if (data.type === 'state') {
-                setRemoteUsername(data.username);
-                setRemoteIsMuted(data.isMuted);
-                setRemoteIsVideoOff(data.isVideoOff);
-                if (data.localCircleColor) {
-                  setRemoteCircleColor(data.localCircleColor);
-                }
+        await setupMesh(roomId!, stream, {
+          onTrack: (remoteStream, id) => {
+            setRemoteStreams((prev) => {
+              const existing = prev.find((r) => r.id === id);
+              if (existing) {
+                return prev.map((r) => (r.id === id ? { id, stream: remoteStream } : r));
               }
-            } catch (error) {
-              console.error("Error parsing peer data:", error);
-            }
-          };
-        };
+              return [...prev, { id, stream: remoteStream }];
+            });
+          },
+          onPeerLeave: (id) => {
+            setRemoteStreams((prev) => prev.filter((r) => r.id !== id));
+          }
+        });
       } catch (err) {
         toast({
           title: "Media Error",
@@ -94,7 +84,7 @@ export default function Room() {
 
     return () => {
       localStream.current?.getTracks().forEach((track) => track.stop());
-      peerConnection.current?.close();
+      peerConnections.current.forEach((pc) => pc.close());
     };
   }, [roomId, toast, localCircleColor]); // Added localCircleColor to the dependency array
 
@@ -105,7 +95,6 @@ export default function Room() {
       });
       const newMutedState = !isMuted;
       setIsMuted(newMutedState);
-      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted: newMutedState, isVideoOff, localCircleColor })); //Send localCircleColor
     }
   };
 
@@ -116,7 +105,6 @@ export default function Room() {
       });
       const newVideoState = !isVideoOff;
       setIsVideoOff(newVideoState);
-      dataChannel.current?.send(JSON.stringify({ type: 'state', username, isMuted, isVideoOff: newVideoState, localCircleColor })); //Send localCircleColor
     }
   };
 
@@ -127,14 +115,12 @@ export default function Room() {
 
         // Replace the video track
         const videoTrack = screenStream.getVideoTracks()[0];
-        const senders = peerConnection.current?.getSenders();
-        const videoSender = senders?.find((sender) =>
-          sender.track?.kind === "video"
-        );
-
-        if (videoSender && videoTrack) {
-          await videoSender.replaceTrack(videoTrack);
-        }
+        peerConnections.current.forEach(async (pc) => {
+          const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+          if (videoSender && videoTrack) {
+            await videoSender.replaceTrack(videoTrack);
+          }
+        });
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
@@ -156,14 +142,12 @@ export default function Room() {
         });
 
         const videoTrack = stream.getVideoTracks()[0];
-        const senders = peerConnection.current?.getSenders();
-        const videoSender = senders?.find((sender) =>
-          sender.track?.kind === "video"
-        );
-
-        if (videoSender && videoTrack) {
-          await videoSender.replaceTrack(videoTrack);
-        }
+        peerConnections.current.forEach(async (pc) => {
+          const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+          if (videoSender && videoTrack) {
+            await videoSender.replaceTrack(videoTrack);
+          }
+        });
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
@@ -194,15 +178,12 @@ export default function Room() {
         const newStream = await switchCamera(localStream.current);
         const videoTrack = newStream.getVideoTracks()[0];
 
-        // Replace the video track in the peer connection
-        const senders = peerConnection.current?.getSenders();
-        const videoSender = senders?.find((sender) =>
-          sender.track?.kind === "video"
-        );
-
-        if (videoSender && videoTrack) {
-          await videoSender.replaceTrack(videoTrack);
-        }
+        peerConnections.current.forEach(async (pc) => {
+          const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+          if (videoSender && videoTrack) {
+            await videoSender.replaceTrack(videoTrack);
+          }
+        });
 
         // Update the local video
         if (localVideoRef.current) {
@@ -227,7 +208,7 @@ export default function Room() {
 
   const endCall = () => {
     localStream.current?.getTracks().forEach((track) => track.stop());
-    peerConnection.current?.close();
+    peerConnections.current.forEach((pc) => pc.close());
     navigate("/");
   };
 
@@ -262,32 +243,13 @@ export default function Room() {
             {isVideoOff && <VideoOff className="w-4 h-4" />}
           </div>
         </Card>
-        <Card className="relative aspect-video overflow-hidden p-0 bg-transparent">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className={cn("w-full h-full object-cover", remoteIsVideoOff && "hidden")}
-            />
-            {remoteIsVideoOff && (
-              <div className="w-full h-full flex items-center justify-center">
-                <div
-                  className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white"
-                  style={{ backgroundColor: remoteCircleColor }}
-                >
-                  {(remoteUsername || "Anonymous").charAt(0).toUpperCase()}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="absolute bottom-4 left-4 text-sm text-white bg-black/50 px-2 py-1 rounded flex items-center gap-2">
-            {remoteUsername || "Waiting for peer..."}
-            {remoteIsMuted && <MicOff className="w-4 h-4" />}
-            {remoteIsVideoOff && <VideoOff className="w-4 h-4" />}
-          </div>
-        </Card>
+        {remoteStreams.map((r) => (
+          <Card key={r.id} className="relative aspect-video overflow-hidden p-0 bg-transparent">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <RemoteVideo stream={r.stream} />
+            </div>
+          </Card>
+        ))}
       </div>
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-4 bg-secondary p-4 rounded-full shadow-lg">
         <ChatSheet roomId={roomId!} username={username} />

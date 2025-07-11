@@ -1,16 +1,17 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import { v4 as uuidv4 } from "uuid";
 import { Server as IOServer } from "socket.io";
 import { storage } from "./storage";
-import type { SignalMessage, Room } from "@shared/schema";
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   const io = new IOServer(httpServer, { path: '/socket.io' });
 
-  const rooms = new Map<string, Set<WebSocket>>();
+  const rooms = new Map<string, Map<string, WebSocket>>();
   io.on("connection", (socket) => {
     socket.on("join-room", async (roomId) => {
       const roomInfo = await storage.getRoomByRoomId(roomId);
@@ -66,35 +67,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   wss.on("connection", (ws) => {
+    const clientId = uuidv4();
+    ws.send(JSON.stringify({ type: "init", data: clientId }));
     let currentRoom: string | null = null;
 
     ws.on("message", async (message) => {
       try {
-        const { type, roomId, data } = JSON.parse(message.toString()) as SignalMessage;
+        const { type, roomId, data, target } = JSON.parse(message.toString());
 
         if (!rooms.has(roomId)) {
-          rooms.set(roomId, new Set());
+          rooms.set(roomId, new Map());
         }
 
         if (!currentRoom) {
           const roomInfo = await storage.getRoomByRoomId(roomId);
           const max = roomInfo?.maxParticipants ?? 2;
-          const set = rooms.get(roomId)!;
-          if (max !== Infinity && set.size >= max) {
+          const map = rooms.get(roomId)!;
+          if (max !== Infinity && map.size >= max) {
             ws.send(JSON.stringify({ type: "error", data: "room-full" }));
             ws.close();
             return;
           }
           currentRoom = roomId;
-          set.add(ws);
+          map.set(clientId, ws);
+          const peers = Array.from(map.keys()).filter((id) => id !== clientId);
+          ws.send(JSON.stringify({ type: "peers", data: peers }));
+          map.forEach((client, id) => {
+            if (id !== clientId && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: "new-peer", data: clientId }));
+            }
+          });
         }
 
-        // Broadcast to all other clients in the room
-        rooms.get(roomId)?.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type, data }));
+        if (target) {
+          const targetWs = rooms.get(roomId)?.get(target);
+          if (targetWs && targetWs.readyState === WebSocket.OPEN) {
+            targetWs.send(
+              JSON.stringify({ type, data, senderId: clientId, target })
+            );
           }
-        });
+        }
       } catch (err) {
         console.error("WebSocket message error:", err);
       }
@@ -102,8 +114,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     ws.on("close", () => {
       if (currentRoom) {
-        rooms.get(currentRoom)?.delete(ws);
-        if (rooms.get(currentRoom)?.size === 0) {
+        const map = rooms.get(currentRoom);
+        map?.delete(clientId);
+        map?.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: "peer-leave", data: clientId }));
+          }
+        });
+        if (map && map.size === 0) {
           rooms.delete(currentRoom);
         }
       }
