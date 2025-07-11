@@ -1,91 +1,137 @@
-import type { SignalMessage } from "@shared/schema";
+export interface PeerEvents {
+  onTrack: (stream: MediaStream, id: string) => void;
+  onPeerLeave?: (id: string) => void;
+}
 
-export async function setupPeerConnection(
+export async function setupMesh(
   roomId: string,
   localStream: MediaStream,
-  onRemoteStream: (stream: MediaStream) => void
+  events: PeerEvents
 ) {
-  const pc = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  });
+  const peers = new Map<string, RTCPeerConnection>();
+  let clientId: string | null = null;
 
-  // Add local tracks to the connection
-  localStream.getTracks().forEach((track) => {
-    pc.addTrack(track, localStream);
-  });
-
-  // Handle remote tracks
-  pc.ontrack = (event) => {
-    onRemoteStream(event.streams[0]);
-  };
-
-  // Setup WebSocket connection
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl = `${protocol}//${window.location.host}/ws`;
   const ws = new WebSocket(wsUrl);
 
-  ws.onmessage = async (event) => {
-    const { type, data } = JSON.parse(event.data);
-
-    try {
-      if (type === "offer") {
-        await pc.setRemoteDescription(new RTCSessionDescription(data));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+  const createPeerConnection = (peerId: string) => {
+    if (peers.has(peerId)) return peers.get(peerId)!;
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+    localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+    pc.onicecandidate = (e) => {
+      if (e.candidate && clientId) {
         ws.send(
           JSON.stringify({
-            type: "answer",
+            type: "ice-candidate",
             roomId,
-            data: answer
+            data: e.candidate,
+            target: peerId,
+            senderId: clientId
           })
         );
-      } else if (type === "answer") {
-        await pc.setRemoteDescription(new RTCSessionDescription(data));
-      } else if (type === "ice-candidate") {
-        await pc.addIceCandidate(new RTCIceCandidate(data));
       }
-    } catch (err) {
-      console.error("WebRTC Error:", err);
+    };
+    pc.ontrack = (ev) => {
+      events.onTrack(ev.streams[0], peerId);
+    };
+    peers.set(peerId, pc);
+    return pc;
+  };
+
+  const createOffer = async (peerId: string) => {
+    const pc = createPeerConnection(peerId);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    if (clientId) {
+      ws.send(
+        JSON.stringify({
+          type: "offer",
+          roomId,
+          data: offer,
+          target: peerId,
+          senderId: clientId
+        })
+      );
     }
   };
 
-  // Send ICE candidates to peer
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      const message: SignalMessage = {
-        type: "ice-candidate",
-        roomId,
-        data: event.candidate
-      };
-      ws.send(JSON.stringify(message));
+  const handleOffer = async (peerId: string, offer: any) => {
+    const pc = createPeerConnection(peerId);
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    if (clientId) {
+      ws.send(
+        JSON.stringify({
+          type: "answer",
+          roomId,
+          data: answer,
+          target: peerId,
+          senderId: clientId
+        })
+      );
     }
   };
 
-  // Create and send offer when connected
-  ws.onopen = async () => {
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      const message: SignalMessage = {
-        type: "offer",
-        roomId,
-        data: offer
-      };
-      ws.send(JSON.stringify(message));
-    } catch (err) {
-      console.error("Error creating offer:", err);
+  ws.onmessage = async (event) => {
+    const msg = JSON.parse(event.data);
+    switch (msg.type) {
+      case "init":
+        clientId = msg.data;
+        ws.send(
+          JSON.stringify({ type: "join", roomId, senderId: clientId })
+        );
+        break;
+      case "peers":
+        (msg.data as string[]).forEach((id) => {
+          createOffer(id);
+        });
+        break;
+      case "new-peer":
+        createOffer(msg.data as string);
+        break;
+      case "offer":
+        if (msg.target === clientId) {
+          await handleOffer(msg.senderId, msg.data);
+        }
+        break;
+      case "answer":
+        if (msg.target === clientId) {
+          const pc = peers.get(msg.senderId);
+          if (pc) {
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
+          }
+        }
+        break;
+      case "ice-candidate":
+        if (msg.target === clientId) {
+          const pc = peers.get(msg.senderId);
+          if (pc) {
+            await pc.addIceCandidate(new RTCIceCandidate(msg.data));
+          }
+        }
+        break;
+      case "peer-leave":
+        const leaving = msg.data as string;
+        if (peers.has(leaving)) {
+          peers.get(leaving)!.close();
+          peers.delete(leaving);
+          events.onPeerLeave?.(leaving);
+        }
+        break;
     }
   };
 
-  return { pc, ws };
+  return { ws, peers };
 }
 
-// Helper function to start screen sharing
 export async function startScreenShare(): Promise<MediaStream> {
   return await navigator.mediaDevices.getDisplayMedia({
     video: {
-      displaySurface: "monitor", // Prefer full screen
-      // `logicalSurface` is not yet part of the TypeScript DOM lib, so cast to any
+      displaySurface: "monitor",
       ...( { logicalSurface: true } as any ),
       cursor: "always"
     },
@@ -93,18 +139,13 @@ export async function startScreenShare(): Promise<MediaStream> {
   });
 }
 
-// Helper function to switch cameras
 export async function switchCamera(currentStream: MediaStream): Promise<MediaStream> {
   const currentVideoTrack = currentStream.getVideoTracks()[0];
   const currentFacingMode = currentVideoTrack.getSettings().facingMode;
-
-  // Toggle between front and back cameras
   const newFacingMode = currentFacingMode === "user" ? "environment" : "user";
-
   const newStream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: newFacingMode },
     audio: true
   });
-
   return newStream;
 }
